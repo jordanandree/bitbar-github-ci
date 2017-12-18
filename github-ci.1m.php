@@ -60,6 +60,12 @@ class GithubCIStatus
         $lines = [];
         try {
             $pull_requests = $this->searchPullRequests();
+
+            if (empty($pull_requests)) {
+                $this->sendOutput("No Pull Requests. Get to work!");
+                exit;
+            }
+
             foreach ($pull_requests as $pr) {
                 $repo_name = substr($pr->repository_url, strlen($this->getConfig()->base_uri . "repos/"));
 
@@ -80,7 +86,7 @@ class GithubCIStatus
             }
         } catch (RuntimeException $e) {
             $this->state = "warning";
-            $this->sendOutput([$e->getMessage()]);
+            $this->sendOutput($e->getMessage());
             exit;
         }
 
@@ -90,16 +96,21 @@ class GithubCIStatus
     /**
      * echo back output to bitbar
      *
-     * @param string[]
+     * @param string[]|string
      *
      * @return void
      */
-    public function sendOutput(array $lines)
+    public function sendOutput($lines)
     {
         echo $this->getConfig()->title;
         echo " " . $this->statusIcon($this->state);
         echo "\n---\n";
-        echo implode($lines, "\n");
+
+        if (is_array($lines)) {
+            echo implode($lines, "\n");
+        } else {
+            echo $lines . "\n";
+        }
     }
 
     /**
