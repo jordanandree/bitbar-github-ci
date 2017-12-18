@@ -2,7 +2,7 @@
 
 Displays an icon with a dropdown containing continuous integration checks across your repositories on github.com.
 
-![screenshot](https://raw.githubusercontent.com/jordanandree/bitbar-github-ci/master/screenshot.jpg)
+![screenshot](https://raw.githubusercontent.com/jordanandree/bitbar-github-ci/7db14a2c6eee1b8ecc67273ba2809c327b53d369/screenshot.jpg )
 
 ### Setup
 
