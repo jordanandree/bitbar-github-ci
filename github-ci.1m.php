@@ -159,12 +159,17 @@ class GithubCIStatus
         $params["access_token"] = $this->getConfig()->access_token;
         $url .= "?" . http_build_query($params);
 
+        $headers = null;
+        $body = null;
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_URL, $url);
         $response = curl_exec($ch);
-        list($headers, $body) = explode("\r\n\r\n", $response, 2);
+
+        if (!empty($response)) {
+            list($headers, $body) = explode("\r\n\r\n", $response, 2);
+        }
 
         curl_close($ch);
 
