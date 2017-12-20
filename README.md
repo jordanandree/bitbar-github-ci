@@ -1,6 +1,6 @@
 ## Github CI Status for BitBar
 
-Displays an icon with a dropdown containing continuous integration checks across your repositories on github.com.
+Displays an icon with a dropdown containing status of continuous integration checks across Pull Requests you've authored.
 
 ![screenshot](https://raw.githubusercontent.com/jordanandree/bitbar-github-ci/29fb903/screenshot.jpg )
 
