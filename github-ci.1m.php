@@ -262,10 +262,10 @@ class GithubCIStatus
     {
         assert(!is_null($repo) && strlen($repo) > 0);
         if(is_null($sha)) {
-            throw new RuntimeException("Incorrect usage of getCommitStatus1");
+            throw new RuntimeException("Incorrect usage of getCommitStatus: hash is null");
         }
         if(strlen($sha) == 0) {
-            throw new RuntimeException("Incorrect usage of getCommitStatus2");
+            throw new RuntimeException("Incorrect usage of getCommitStatus: hash is empty");
         }
 
         return $this->sendRequest("repos/$repo/commits/$sha/status");
