@@ -10,6 +10,14 @@
  * <bitbar.abouturl>https://github.com/jordanandree/bitbar-github-ci</bitbar.abouturl>
  *
  * Icon sourced from feather icons: https://feathericons.com/
+ *
+ * To setup, create or edit your ~/.bitbarrc file with a new section:
+ *
+ * [github_ci]
+ * access_token=xxx # Personal Access Token
+ * username=jordanandree
+ * repos[]=jordanandree/bitbar-github-ci
+ * repos[]=jordanandree/dotfiles
  */
 
 class GithubCIStatus
@@ -20,7 +28,7 @@ class GithubCIStatus
      * @var array
      */
     protected $default_config = [
-        "hostname" => "github.com",
+        "hostname" => "api.github.com",
     ];
 
     /**
@@ -78,17 +86,28 @@ class GithubCIStatus
             foreach ($pull_requests as $pr) {
                 $repo_name = substr($pr->repository_url, strlen($this->getConfig()->base_uri . "repos/"));
 
-                $pr_info = $this->getPullRequest($repo_name, $pr->number);
-                $status  = $this->getCommitStatus($repo_name, $pr_info->head->sha);
-                $lines[] = $this->formatLine($status->state, $pr_info->title, $pr_info->html_url);
+                if (strpos($pr->html_url, "/pull/") !== false) {
+                    // Uncomment for debugging
+                    // $this->sendOutput("pr is " . $pr->html_url);
 
-                if ($status->state !== $this->state && !$this->state_lock) {
-                    $this->state = $status->state;
-                    $this->state_lock = true;
-                }
+                    $pr_info = $this->getPullRequest($repo_name, $pr->number);
+                    // Uncomment for debugging
+                    if (!is_null($pr_info->head->sha) && strlen($pr_info->head->sha) > 0) {
+                        $status  = $this->getCommitStatus($repo_name, $pr_info->head->sha);
+                        $lines[] = $this->formatLine($status->state, $pr_info->title, $pr_info->html_url);
 
-                foreach ($status->statuses as $check) {
-                    $lines[] = "--" . $this->formatLine($check->state, $check->context, $check->target_url);
+                        if ($status->state !== $this->state && !$this->state_lock) {
+                            $this->state = $status->state;
+                            $this->state_lock = true;
+                        }
+
+                        foreach ($status->statuses as $check) {
+                            $lines[] = "--" . $this->formatLine($check->state, $check->context, $check->target_url);
+                        }
+                    }
+                } else {
+                    // Uncomment for debugging
+                    // $this->sendOutput("url is ".$pr->html_url." and is an issue not pull request");
                 }
             }
         } catch (RuntimeException $e) {
@@ -157,7 +176,7 @@ class GithubCIStatus
             }
 
             $config = array_merge($this->default_config, $config["github_ci"]);
-            $config["base_uri"] = "https://" . $config["hostname"] . "/api/v3/";
+            $config["base_uri"] = "https://" . $config["hostname"] . "/";
             $this->config = (object) $config;
         }
 
@@ -180,13 +199,19 @@ class GithubCIStatus
         $params["access_token"] = $this->getConfig()->access_token;
         $url .= "?" . http_build_query($params);
 
+        // Uncomment for debugging
+        // $this->sendOutput("url is \"$url\"");
+
         $headers = null;
         $body = null;
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_URL, $url);
+        // https://developer.github.com/v3/#user-agent-required
+        curl_setopt($ch, CURLOPT_USERAGENT, "Bitbar GitHub CI github.com/jordanandree/bitbar-github-ci");
         $response = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if (!empty($response)) {
             list($headers, $body) = explode("\r\n\r\n", $response, 2);
@@ -194,9 +219,18 @@ class GithubCIStatus
 
         curl_close($ch);
 
-        if (is_null($body)) {
-            throw new RuntimeException("Error making request to the Github API. Check your configuration.");
+        if (is_null($body) || $httpcode != 200) {
+            // Uncomment for debugging
+            // $this->sendOutput("url is \"$url\"");
+            // $this->sendOutput("Body is $body");
+            // throw new RuntimeException("Why did this fail?");
+            return '';
+
+            // throw new RuntimeException("Error making request to the Github API. Check your configuration.");
         } else {
+            // Uncomment for debugging
+            // $this->sendOutput("url is \"$url\"");
+            // $this->sendOutput("Body is $body");
             return json_decode($body);
         }
     }
@@ -211,6 +245,8 @@ class GithubCIStatus
      */
     protected function getPullRequest($repo, $id)
     {
+        assert(!is_null($repo) && strlen($repo) > 0);
+        assert(!is_null($id) && strlen($id) > 0);
         return $this->sendRequest("repos/$repo/pulls/$id");
     }
 
@@ -224,6 +260,14 @@ class GithubCIStatus
      */
     protected function getCommitStatus($repo, $sha)
     {
+        assert(!is_null($repo) && strlen($repo) > 0);
+        if(is_null($sha)) {
+            throw new RuntimeException("Incorrect usage of getCommitStatus: hash is null");
+        }
+        if(strlen($sha) == 0) {
+            throw new RuntimeException("Incorrect usage of getCommitStatus: hash is empty");
+        }
+
         return $this->sendRequest("repos/$repo/commits/$sha/status");
     }
 
@@ -238,6 +282,8 @@ class GithubCIStatus
         foreach ($this->getConfig()->repos as $repo) {
           $q .= " repo:$repo";
         }
+        // Uncomment for debugging
+        // $this->sendOutput("q is \"$q\"");
 
         return $this->sendRequest("search/issues", [
             "q" => $q,
